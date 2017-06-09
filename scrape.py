@@ -16,7 +16,7 @@ def getTitleOld(dept, num, year):
                 return getTitleOld(dept, num, year-1)
             else:
                 print("{} {}: Couldn't find class".format(dept, num))
-                return
+                return None
         else:
             raise e
 
@@ -50,17 +50,41 @@ def getTitle(dept, num, year, month):
     else:
         return soup.find('div', {'id': 'CDpage'}).find('h2').text
 
+def offered(dept, num, year, month):
+    url = "https://www.uvic.ca/BAN1P/bwckctlg.p_disp_listcrse?term_in={}{}&subj_in={}&crse_in={}&schd_in=".format(
+            year, class_months[month], dept, num)
+    try:
+        sock = urllib.request.urlopen(url)
+        page = sock.read()
+    except urllib.error.HTTPError as e:
+        print("{} {}: Couldn't access schedule".format(dept, num))
+        raise e
+
+    sock.close()
+    soup = bs(page, "lxml")
+    tds = soup.find('table', {'class': 'plaintable', 'summary': 'This layout table holds message information'})
+    if tds != None:
+            return False
+
+    return True
+
+
 with open("/media/sf_D_DRIVE/uvic-comp-list", 'r') as class_list:
-    with open("/media/sf_D_DRIVE/uvic-complementary-classes.txt", 'w') as out:
+    with open("/media/sf_D_DRIVE/uvic-2017-09-complementary-studies.txt", 'w') as out:
         last_dept = ""
         for line in class_list:
             dept, num, *other = line.rstrip('\n').split(' ')
             if last_dept != dept:
                 print()
-                print(dept, end=" ")
-            print(num, end=" ")
+                print(dept + ":")
+            print("\t" + num, end=" ")
             last_dept = dept
-            title = getTitle(dept, num, 2017, 0)
-            out.write("{:>4} {:<3}\t{}\n".format(dept, num, title))
+            if offered(dept, num, 2017, 0):
+                print(u'\u2713')
+                title = getTitle(dept, num, 2017, 0)
+                if title is not None:
+                    out.write("{:>4} {:<3}\t{}\n".format(dept, num, title))
+            else:
+                print(u'\u2717')
         print()
 
